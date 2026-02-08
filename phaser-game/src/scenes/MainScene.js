@@ -28,8 +28,9 @@ export default class MainScene extends Phaser.Scene {
   preload() {
     // Conveyor tiles
     this.load.image("beltLeft", "/assets/conveyor/left-CB.png");
-    this.load.image("beltMid", "/assets/conveyor/middle-CB.png");
+    this.load.image("beltMid", "/assets/conveyor/middle-CB-repeat.png");
     this.load.image("beltRight", "/assets/conveyor/right-CB.png");
+    this.load.image("wheel", "/assets/conveyor/wheel.png");
   }
 
   // ------------------------------------------------------------
@@ -120,7 +121,31 @@ export default class MainScene extends Phaser.Scene {
     this.conveyor.container.setScale(0.4);
 
     // --- Factory position (right end of belt) ---
+
+    // Belt start and end X positions
+    const beltStartX = this.beltStartX;
     const beltEndX = this.beltStartX + this.conveyor.width;
+
+    const wheelY = this.beltY + 7;
+
+    // Wheels
+    this.leftWheel = this.add.image(beltStartX + 32, wheelY, "wheel").setScale(0.55);
+    this.rightWheel = this.add.image(this.beltY*2 - 72, wheelY, "wheel").setScale(0.55);
+
+    // --- Middle wheels ---
+    // Place a wheel every 2 middle tiles
+    this.middleWheels = [];
+
+    for (let i = 0; i < this.conveyor.mids.length; i += 1) {
+      const midTile = this.conveyor.mids[i];
+
+      // midTile.x is inside container, so convert to world position:
+      const worldX = this.beltStartX + (midTile.x - 120) + this.conveyor.tileW * 0.2;
+
+      const wheel = this.add.image(worldX, wheelY, "wheel").setScale(0.55);
+      this.middleWheels.push(wheel);
+    }
+
     // this.factoryX = beltEndX + 60;
     this.factoryX = Phaser.Math.Clamp(
       beltEndX + 20, // gap = 20px
@@ -328,9 +353,19 @@ export default class MainScene extends Phaser.Scene {
   update(time, delta) {
     const dt = delta / 1000;
 
+    // Rotate wheels (speed linked to beltSpeed)
+    const rotationSpeed = this.beltSpeed * dt * 0.01;
+
+    this.leftWheel.rotation -= rotationSpeed;
+    this.rightWheel.rotation -= rotationSpeed;
+
     // --- Animate belt middle tiles (right-to-left) ---
     for (const mid of this.conveyor.mids) {
       mid.tilePositionX -= this.beltSpeed * dt * 0.6;
+    }
+
+    for (const w of this.middleWheels) {
+      w.rotation -= rotationSpeed;
     }
 
     // --- Worker movement (left/right) ---
