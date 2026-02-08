@@ -1,0 +1,21 @@
+:root {
+  color: #111;
+  background: #f7f7fb;
+}
+
+body {
+  margin: 0;
+  font-family: "Space Mono", ui-monospace, Menlo, Monaco, "Cascadia Code", "Segoe UI", monospace;
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+}
+
+#app {
+  width: 100vw;
+  height: 100vh;
+}
+
+canvas {
+  display: block;
+}
