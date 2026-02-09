@@ -23,6 +23,12 @@ export default class MainScene extends Phaser.Scene {
 
     // Conveyor layout
     this.beltStartX = 180;
+
+    // Conveyor visual scale
+    this.conveyorScale = 0.4;
+
+    // Wheels
+    this.middleWheels = [];
   }
 
   preload() {
@@ -30,14 +36,19 @@ export default class MainScene extends Phaser.Scene {
     this.load.image("beltLeft", "/assets/conveyor/left-CB.png");
     this.load.image("beltMid", "/assets/conveyor/middle-CB-repeat.png");
     this.load.image("beltRight", "/assets/conveyor/right-CB.png");
+
+    // Wheel
     this.load.image("wheel", "/assets/conveyor/wheel.png");
+
+    // Tray
+    this.load.image("trayRack", "/assets/items/tray-bottles.png");
   }
 
   // ------------------------------------------------------------
   // Conveyor builder (Left + N middle tiles + Right)
   // Middle tiles are TileSprites so they can scroll.
   // ------------------------------------------------------------
-  createConveyorBelt({ x, y, middleCount = 9, scale = 1 }) {
+  createConveyorBelt({ x, y, middleCount = 6, scale = 1 }) {
     const beltContainer = this.add.container(x, y);
     const mids = [];
 
@@ -48,7 +59,6 @@ export default class MainScene extends Phaser.Scene {
       .setScale(scale);
     beltContainer.add(left);
 
-    // Use displayWidth after scaling
     const tileW = left.displayWidth;
     const tileH = left.displayHeight;
 
@@ -71,7 +81,6 @@ export default class MainScene extends Phaser.Scene {
 
     beltContainer.add(right);
 
-    // Total width of belt
     const totalWidth = tileW * (middleCount + 2);
 
     return {
@@ -88,101 +97,43 @@ export default class MainScene extends Phaser.Scene {
   create() {
     const { width, height } = this.scale;
 
-    // --- Background FIRST (so it doesn't cover belt) ---
+    // --- Background FIRST ---
     this.add.rectangle(width / 2, height / 2, width, height, 0x1b1b1b);
 
     // --- Belt positions ---
     this.beltY = 420;
-    this.rackY = this.beltY - 52;
 
-    // --- Create conveyor using your 3 images ---
-    const scale = 1;
+    // Tray should sit ON TOP of belt.
+    // Because tray uses origin(0.5, 1) (bottom),
+    // we set tray bottom a little above belt center.
+    this.trayBottomY = this.beltY - 20;
 
-    // Create a temporary left tile to know width
-    const tempLeft = this.add
-      .image(0, 0, "beltLeft")
-      .setScale(scale)
-      .setVisible(false);
-    const tileW = tempLeft.displayWidth;
-    tempLeft.destroy();
-
-    // Available belt width on screen
-    const availableWidth = width - 360; // keep space for truck + worker + factory
-    const middleCount = Math.max(3, Math.floor(availableWidth / tileW) - 2);
-
-    // Create belt with new scale and middle count
+    // --- Create conveyor ---
     this.conveyor = this.createConveyorBelt({
       x: this.beltStartX,
       y: this.beltY,
       middleCount: 6,
-      scale,
+      scale: 1,
     });
 
-    this.conveyor.container.setScale(0.4);
+    // Scale down the whole belt
+    this.conveyor.container.setScale(this.conveyorScale);
+    this.conveyor.container.setDepth(2);
 
-    // --- Factory position (right end of belt) ---
+    // IMPORTANT:
+    // conveyor.width is UN-SCALED width.
+    // actual on-screen width:
+    this.actualBeltWidth = this.conveyor.width * this.conveyorScale;
 
-    // Belt start and end X positions
-    // const beltStartX = this.beltStartX;
-    const beltEndX = this.beltStartX + this.conveyor.width;
+    // Belt end X on screen:
+    this.beltEndX = this.beltStartX + this.actualBeltWidth;
 
-    // --- Wheel positions ---
-    const wheelY = this.beltY + 7;
-    const wheelScale = 0.55;
+    // --- Factory position (near belt end) ---
+    this.factoryX = Phaser.Math.Clamp(this.beltEndX + 60, 0, width - 80);
 
-    // Total width of the belt scaled by the container scale (0.4)
-    const actualBeltWidth = (this.conveyor.width * 0.4) - 64; // Subtract 64px to keep wheels inside the belt edges
-
-    // We want wheels from start to end. 
-    // Let's place a total of 8 wheels equally spaced.
-    const totalWheels = 4; 
-    const spacing = actualBeltWidth / (totalWheels - 1);
-
-    this.middleWheels = [];
-
-    for (let i = 0; i < totalWheels; i++) {
-        const wheelX = this.beltStartX + (i * spacing) + 32;
-        
-        const wheel = this.add.image(wheelX, wheelY, "wheel")
-            .setScale(wheelScale)
-            .setDepth(5); // Ensure they are behind the factory but on the belt
-
-        this.middleWheels.push(wheel);
-        
-        // Assign the first and last to your specific references if needed
-        if (i === 0) this.leftWheel = wheel;
-        if (i === totalWheels - 1) this.rightWheel = wheel;
-    }
-
-    // Wheels
-    // this.leftWheel = this.add.image(beltStartX + 32, wheelY, "wheel").setScale(0.55);
-    // this.rightWheel = this.add.image(this.beltY*2 - 72, wheelY, "wheel").setScale(0.55);
-
-    // --- Middle wheels ---
-    // Place a wheel every 2 middle tiles
-    // this.middleWheels = [];
-
-    // for (let i = 0; i < this.conveyor.mids.length; i += 1) {
-    //   const midTile = this.conveyor.mids[i];
-
-    //   // midTile.x is inside container, so convert to world position:
-    //   const worldX = this.beltStartX + (midTile.x - 120) + this.conveyor.tileW * 0.2;
-
-    //   const wheel = this.add.image(worldX, wheelY, "wheel").setScale(0.55);
-    //   this.middleWheels.push(wheel);
-    // }
-
-    // this.factoryX = beltEndX + 60;
-    this.factoryX = Phaser.Math.Clamp(
-      beltEndX + 20, // gap = 20px
-      0,
-      width - 80, // keep factory visible
-    );
-
-    // --- Factory block ---
     this.factory = this.add
       .rectangle(this.factoryX, this.beltY - 100, 170, 260, 0x444444)
-      .setDepth(10); // Higher number = closer to the camera
+      .setDepth(3);
 
     this.factoryText = this.add
       .text(this.factoryX - 55, this.beltY - 215, "FACTORY", {
@@ -190,6 +141,41 @@ export default class MainScene extends Phaser.Scene {
         color: "#ffffff",
       })
       .setDepth(10);
+
+    // --- Factory Door (spawn point) ---
+    // Door is at left edge of factory
+    this.factoryDoorX = this.factoryX - 85;
+    this.factoryDoorY = this.trayBottomY;
+
+    // Debug door marker (REMOVE later if you want)
+    // If you see this red dot, trays will spawn correctly.
+    this.add
+      .circle(this.factoryDoorX, this.factoryDoorY, 6, 0xff0000)
+      .setDepth(50);
+
+    // --- Wheels ---
+    const wheelY = this.beltY + 7;
+    const wheelScale = 0.55;
+
+    // Place 4 wheels evenly across belt
+    const totalWheels = 4;
+    const spacing = (this.actualBeltWidth - 64) / (totalWheels - 1);
+
+    this.middleWheels = [];
+
+    for (let i = 0; i < totalWheels; i++) {
+      const wheelX = this.beltStartX + 32 + i * spacing;
+
+      const wheel = this.add
+        .image(wheelX, wheelY, "wheel")
+        .setScale(wheelScale)
+        .setDepth(5);
+
+      this.middleWheels.push(wheel);
+
+      if (i === 0) this.leftWheel = wheel;
+      if (i === totalWheels - 1) this.rightWheel = wheel;
+    }
 
     // --- Worker on left side ---
     this.worker = this.add.rectangle(230, this.beltY - 95, 40, 85, 0xffcc00);
@@ -201,17 +187,16 @@ export default class MainScene extends Phaser.Scene {
     // --- Truck behind worker ---
     this.truckX = 70;
 
-    // --- Truck behind worker ---
     this.truck = this.add
       .rectangle(this.truckX, this.beltY - 110, 160, 250, 0x123a66)
-      .setDepth(10);
+      .setDepth(100);
 
     this.truckText = this.add
       .text(this.truckX - 45, this.beltY - 220, "TRUCK", {
         fontSize: "16px",
         color: "#ffffff",
       })
-      .setDepth(10);
+      .setDepth(100);
 
     // Truck zone for delivery
     this.truckZone = this.add.zone(this.truckX, this.beltY - 110, 170, 250);
@@ -257,24 +242,41 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // ------------------------------------------------------------
-  // Spawn rack on the belt (right side near factory)
+  // Spawn tray exactly from factory door
   // ------------------------------------------------------------
   spawnRack() {
-    const spawnX = this.beltStartX + this.conveyor.width - 55;
+    // Prevent spawning if another tray is still near the door
+    for (const r of this.racks.getChildren()) {
+      if (!r.active) continue;
+      if (r.isCarried) continue;
 
-    const rack = this.add.rectangle(spawnX, this.rackY, 70, 45, 0x00d084);
-    this.physics.add.existing(rack);
+      if (Math.abs(r.x - this.factoryDoorX) < 120) {
+        return;
+      }
+    }
 
-    rack.body.setAllowGravity(false);
-    rack.body.setImmovable(true);
+    const tray = this.physics.add.image(
+      this.factoryDoorX,
+      this.factoryDoorY,
+      "trayRack",
+    );
 
-    rack.isCarried = false;
+    tray.setScale(0.35);
+    tray.setOrigin(0.5, 1);
 
-    this.racks.add(rack);
+    tray.body.setAllowGravity(false);
+    tray.body.setImmovable(true);
+
+    tray.isCarried = false;
+
+    // Keep above belt visuals
+    tray.setDepth(20);
+
+    this.racks.add(tray);
   }
 
   // ------------------------------------------------------------
-  // Pick rack (closest within range)
+  // Pick tray (closest within range)
   // ------------------------------------------------------------
   tryPickRack() {
     if (this.carriedRack) return;
@@ -295,7 +297,7 @@ export default class MainScene extends Phaser.Scene {
         r.y,
       );
 
-      if (dist < 80 && dist < closestDist) {
+      if (dist < 90 && dist < closestDist) {
         closestDist = dist;
         closest = r;
       }
@@ -309,7 +311,7 @@ export default class MainScene extends Phaser.Scene {
   }
 
   // ------------------------------------------------------------
-  // Deliver rack to truck
+  // Deliver tray to truck
   // ------------------------------------------------------------
   tryDeliverRack() {
     if (!this.carriedRack) return;
@@ -317,20 +319,20 @@ export default class MainScene extends Phaser.Scene {
     const rackToDeliver = this.carriedRack;
     this.carriedRack = null;
 
-    // Move the rack behind the truck before destroying
+    // Simple delivery animation
     this.tweens.add({
-        targets: rackToDeliver,
-        x: this.truckX,
-        alpha: 0,
-        duration: 200,
-        onComplete: () => {
+      targets: rackToDeliver,
+      x: this.truckX,
+      y: this.beltY - 150,
+      alpha: 0,
+      duration: 220,
+      onComplete: () => {
         rackToDeliver.destroy();
-        }
+      },
     });
 
     this.score++;
 
-    // Every 10 deliveries, new round
     if (this.score % 10 === 0) {
       this.round++;
       this.updateDifficulty();
@@ -349,7 +351,6 @@ export default class MainScene extends Phaser.Scene {
       this.baseSpawnDelay - (this.round - 1) * 250,
     );
 
-    // Restart timer
     this.spawnTimer.remove(false);
     this.spawnTimer = this.time.addEvent({
       delay: this.spawnDelay,
@@ -361,9 +362,6 @@ export default class MainScene extends Phaser.Scene {
     this.updateUI();
   }
 
-  // ------------------------------------------------------------
-  // UI update
-  // ------------------------------------------------------------
   updateUI() {
     const carrying = this.carriedRack ? "YES" : "NO";
 
@@ -376,22 +374,19 @@ export default class MainScene extends Phaser.Scene {
   update(time, delta) {
     const dt = delta / 1000;
 
-    // Rotate wheels (speed linked to beltSpeed)
-    const rotationSpeed = this.beltSpeed * dt * 0.03;
-
-    this.leftWheel.rotation -= rotationSpeed;
-    this.rightWheel.rotation -= rotationSpeed;
-
-    // --- Animate belt middle tiles (right-to-left) ---
-    for (const mid of this.conveyor.mids) {
-      mid.tilePositionX -= this.beltSpeed * dt * 0.8; // Adjust multiplier for visual effect
-    }
+    // --- Rotate wheels ---
+    const rotationSpeed = this.beltSpeed * dt * 0.02;
 
     for (const w of this.middleWheels) {
       w.rotation -= rotationSpeed;
     }
 
-    // --- Worker movement (left/right) ---
+    // --- Animate belt middle tiles ---
+    for (const mid of this.conveyor.mids) {
+      mid.tilePositionX -= this.beltSpeed * dt * 0.8;
+    }
+
+    // --- Worker movement ---
     const speed = 200;
 
     if (this.cursors.left.isDown || this.keys.A.isDown) {
@@ -402,23 +397,24 @@ export default class MainScene extends Phaser.Scene {
       this.worker.body.setVelocityX(0);
     }
 
-    // --- Pick rack ---
+    // --- Pick tray ---
     if (Phaser.Input.Keyboard.JustDown(this.keys.E)) {
       this.tryPickRack();
     }
 
-    // --- Move racks with belt ---
+    // --- Move trays with belt ---
     for (const r of this.racks.getChildren()) {
       if (!r.active) continue;
 
-      // Skip carried rack
+      // Skip carried tray
       if (r.isCarried) continue;
 
-      // Belt movement
       r.x -= this.beltSpeed * dt;
-      r.y = this.rackY;
 
-      // Missed rack
+      // Keep bottom aligned to belt top
+      r.y = this.trayBottomY;
+
+      // Missed tray
       if (r.x < 40) {
         r.destroy();
         this.lives--;
@@ -432,31 +428,37 @@ export default class MainScene extends Phaser.Scene {
       }
     }
 
-    // --- Carry rack follows worker ---
+    // --- Carried tray follows worker ---
     if (this.carriedRack) {
       this.carriedRack.x = this.worker.x;
-      this.carriedRack.y = this.worker.y - 70;
+
+      // Worker is a rectangle, so use this for nice look
+      this.carriedRack.y = this.worker.y - 10;
     }
   }
 
   gameOver() {
     this.physics.pause();
 
-    this.add.rectangle(
-      this.scale.width / 2,
-      this.scale.height / 2,
-      520,
-      240,
-      0x000000,
-      0.8,
-    );
+    this.add
+      .rectangle(
+        this.scale.width / 2,
+        this.scale.height / 2,
+        520,
+        240,
+        0x000000,
+        1,
+      )
+      .setOrigin(0.5)
+      .setDepth(100);
 
     this.add
       .text(this.scale.width / 2, this.scale.height / 2 - 40, "GAME OVER", {
         fontSize: "44px",
         color: "#ff5555",
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(100);
 
     this.add
       .text(
@@ -468,6 +470,7 @@ export default class MainScene extends Phaser.Scene {
           color: "#ffffff",
         },
       )
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(100);
   }
 }
