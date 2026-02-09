@@ -123,28 +123,54 @@ export default class MainScene extends Phaser.Scene {
     // --- Factory position (right end of belt) ---
 
     // Belt start and end X positions
-    const beltStartX = this.beltStartX;
+    // const beltStartX = this.beltStartX;
     const beltEndX = this.beltStartX + this.conveyor.width;
 
+    // --- Wheel positions ---
     const wheelY = this.beltY + 7;
+    const wheelScale = 0.55;
+
+    // Total width of the belt scaled by the container scale (0.4)
+    const actualBeltWidth = (this.conveyor.width * 0.4) - 64; // Subtract 64px to keep wheels inside the belt edges
+
+    // We want wheels from start to end. 
+    // Let's place a total of 8 wheels equally spaced.
+    const totalWheels = 4; 
+    const spacing = actualBeltWidth / (totalWheels - 1);
+
+    this.middleWheels = [];
+
+    for (let i = 0; i < totalWheels; i++) {
+        const wheelX = this.beltStartX + (i * spacing) + 32;
+        
+        const wheel = this.add.image(wheelX, wheelY, "wheel")
+            .setScale(wheelScale)
+            .setDepth(5); // Ensure they are behind the factory but on the belt
+
+        this.middleWheels.push(wheel);
+        
+        // Assign the first and last to your specific references if needed
+        if (i === 0) this.leftWheel = wheel;
+        if (i === totalWheels - 1) this.rightWheel = wheel;
+    }
 
     // Wheels
-    this.leftWheel = this.add.image(beltStartX + 32, wheelY, "wheel").setScale(0.55);
-    this.rightWheel = this.add.image(this.beltY*2 - 72, wheelY, "wheel").setScale(0.55);
+    // this.leftWheel = this.add.image(beltStartX + 32, wheelY, "wheel").setScale(0.55);
+    // this.rightWheel = this.add.image(this.beltY*2 - 72, wheelY, "wheel").setScale(0.55);
 
     // --- Middle wheels ---
     // Place a wheel every 2 middle tiles
-    this.middleWheels = [];
+    // this.middleWheels = [];
 
-    for (let i = 0; i < this.conveyor.mids.length; i += 1) {
-      const midTile = this.conveyor.mids[i];
+    // for (let i = 0; i < this.conveyor.mids.length; i += 1) {
+    //   const midTile = this.conveyor.mids[i];
 
-      // midTile.x is inside container, so convert to world position:
-      const worldX = this.beltStartX + (midTile.x - 120) + this.conveyor.tileW * 0.2;
+    //   // midTile.x is inside container, so convert to world position:
+    //   const worldX = this.beltStartX + (midTile.x - 120) + this.conveyor.tileW * 0.2;
 
-      const wheel = this.add.image(worldX, wheelY, "wheel").setScale(0.55);
-      this.middleWheels.push(wheel);
-    }
+    //   const wheel = this.add.image(worldX, wheelY, "wheel").setScale(0.55);
+    //   this.middleWheels.push(wheel);
+    // }
 
     // this.factoryX = beltEndX + 60;
     this.factoryX = Phaser.Math.Clamp(
@@ -288,9 +314,6 @@ export default class MainScene extends Phaser.Scene {
   tryDeliverRack() {
     if (!this.carriedRack) return;
 
-    this.carriedRack.destroy();
-    this.carriedRack = null;
-
     const rackToDeliver = this.carriedRack;
     this.carriedRack = null;
 
@@ -354,14 +377,14 @@ export default class MainScene extends Phaser.Scene {
     const dt = delta / 1000;
 
     // Rotate wheels (speed linked to beltSpeed)
-    const rotationSpeed = this.beltSpeed * dt * 0.01;
+    const rotationSpeed = this.beltSpeed * dt * 0.03;
 
     this.leftWheel.rotation -= rotationSpeed;
     this.rightWheel.rotation -= rotationSpeed;
 
     // --- Animate belt middle tiles (right-to-left) ---
     for (const mid of this.conveyor.mids) {
-      mid.tilePositionX -= this.beltSpeed * dt * 0.6;
+      mid.tilePositionX -= this.beltSpeed * dt * 0.8; // Adjust multiplier for visual effect
     }
 
     for (const w of this.middleWheels) {
