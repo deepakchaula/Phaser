@@ -42,6 +42,8 @@ export default class MainScene extends Phaser.Scene {
 
     // Tray
     this.load.image("trayRack", "/assets/items/tray-bottles.png");
+    this.load.image("factorySprite", "/assets/factory/full-factory.png");
+    this.load.image("truckSprite", "/assets/truck/full-truck.png");
   }
 
   // ------------------------------------------------------------
@@ -128,30 +130,38 @@ export default class MainScene extends Phaser.Scene {
     // Belt end X on screen:
     this.beltEndX = this.beltStartX + this.actualBeltWidth;
 
+    this.beltLeftLimit = this.beltStartX + 15;
+    this.beltRightLimit = this.beltStartX + this.actualBeltWidth - 15;
+
     // --- Factory position (near belt end) ---
-    this.factoryX = Phaser.Math.Clamp(this.beltEndX + 60, 0, width - 80);
+    this.factoryX = Phaser.Math.Clamp(this.beltEndX - 30, 0, width - 80);
 
-    this.factory = this.add
-      .rectangle(this.factoryX, this.beltY - 100, 170, 260, 0x444444)
-      .setDepth(3);
+    this.factory = this.add.image(this.factoryX, this.beltY - 190, "factorySprite");
 
-    this.factoryText = this.add
-      .text(this.factoryX - 55, this.beltY - 215, "FACTORY", {
-        fontSize: "16px",
-        color: "#ffffff",
-      })
-      .setDepth(10);
+    // Adjust scale (change if needed)
+    this.factory.setScale(1.4);
+
+    // Put factory behind racks but above belt
+    this.factory.setDepth(1);
+
+    // Optional label (you can remove)
+    // this.factoryText = this.add
+    //   .text(this.factoryX - 55, this.beltY - 260, "FACTORY", {
+    //     fontSize: "16px",
+    //     color: "#ffffff",
+    //   })
+    //   .setDepth(20);
 
     // --- Factory Door (spawn point) ---
     // Door is at left edge of factory
-    this.factoryDoorX = this.factoryX - 85;
+    this.factoryDoorX = this.factoryX - 5;
     this.factoryDoorY = this.trayBottomY;
 
     // Debug door marker (REMOVE later if you want)
     // If you see this red dot, trays will spawn correctly.
-    this.add
-      .circle(this.factoryDoorX, this.factoryDoorY, 6, 0xff0000)
-      .setDepth(50);
+    // this.add
+    //   .circle(this.factoryDoorX, this.factoryDoorY, 6, 0xff0000)
+    //   .setDepth(50);
 
     // --- Wheels ---
     const wheelY = this.beltY + 7;
@@ -185,21 +195,26 @@ export default class MainScene extends Phaser.Scene {
     this.worker.body.setCollideWorldBounds(true);
 
     // --- Truck behind worker ---
-    this.truckX = 70;
+    this.truckX = -40;
 
-    this.truck = this.add
-      .rectangle(this.truckX, this.beltY - 110, 160, 250, 0x123a66)
-      .setDepth(100);
+    this.truck = this.add.image(this.truckX, this.beltY - 65, "truckSprite");
 
-    this.truckText = this.add
-      .text(this.truckX - 45, this.beltY - 220, "TRUCK", {
-        fontSize: "16px",
-        color: "#ffffff",
-      })
-      .setDepth(100);
+    // Adjust scale to fit your scene
+    this.truck.setScale(0.8);
+
+    // Put truck behind worker + trays
+    this.truck.setDepth(6);
+
+    // Optional label (remove if you want)
+    // this.truckText = this.add
+    //   .text(this.truckX - 35, this.beltY - 240, "TRUCK", {
+    //     fontSize: "16px",
+    //     color: "#ffffff",
+    //   })
+    //   .setDepth(20);
 
     // Truck zone for delivery
-    this.truckZone = this.add.zone(this.truckX, this.beltY - 110, 170, 250);
+    this.truckZone = this.add.zone(this.truckX + 10, this.beltY - 95, 260, 220);
     this.physics.add.existing(this.truckZone);
     this.truckZone.body.setAllowGravity(false);
     this.truckZone.body.setImmovable(true);
@@ -266,6 +281,7 @@ export default class MainScene extends Phaser.Scene {
 
     tray.body.setAllowGravity(false);
     tray.body.setImmovable(true);
+    tray.x = Phaser.Math.Clamp(tray.x, this.beltLeftLimit, this.beltRightLimit);
 
     tray.isCarried = false;
 
@@ -415,7 +431,7 @@ export default class MainScene extends Phaser.Scene {
       r.y = this.trayBottomY;
 
       // Missed tray
-      if (r.x < 40) {
+      if (r.x < this.beltLeftLimit) {
         r.destroy();
         this.lives--;
 
