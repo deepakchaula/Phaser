@@ -214,10 +214,12 @@ export default class MainScene extends Phaser.Scene {
     //   .setDepth(20);
 
     // Truck zone for delivery
-    this.truckZone = this.add.zone(this.truckX + 10, this.beltY - 95, 260, 220);
-    this.physics.add.existing(this.truckZone);
-    this.truckZone.body.setAllowGravity(false);
-    this.truckZone.body.setImmovable(true);
+    // Truck drop zone (near truck opening)
+    this.truckDropZone = this.add.zone(this.truckX + 140, this.beltY - 110, 140, 160);
+    this.physics.add.existing(this.truckDropZone);
+
+    this.truckDropZone.body.setAllowGravity(false);
+    this.truckDropZone.body.setImmovable(true);
 
     // --- Racks group ---
     this.racks = this.physics.add.group();
@@ -248,9 +250,9 @@ export default class MainScene extends Phaser.Scene {
     });
 
     // --- Delivery overlap ---
-    this.physics.add.overlap(this.worker, this.truckZone, () => {
-      this.tryDeliverRack();
-    });
+    // this.physics.add.overlap(this.worker, this.truckZone, () => {
+    //   this.tryDeliverRack();
+    // });
 
     // --- World bounds ---
     this.physics.world.setBounds(0, 0, width, height);
@@ -332,16 +334,26 @@ export default class MainScene extends Phaser.Scene {
   tryDeliverRack() {
     if (!this.carriedRack) return;
 
+    // Worker must be close to truck drop zone
+    const dist = Phaser.Math.Distance.Between(
+      this.worker.x,
+      this.worker.y,
+      this.truckDropZone.x,
+      this.truckDropZone.y
+    );
+
+    if (dist > 90) return; // too far, don't deliver
+
     const rackToDeliver = this.carriedRack;
     this.carriedRack = null;
 
-    // Simple delivery animation
+    // Drop animation into truck
     this.tweens.add({
       targets: rackToDeliver,
-      x: this.truckX,
-      y: this.beltY - 150,
+      x: this.truckDropZone.x,
+      y: this.truckDropZone.y + 20,
       alpha: 0,
-      duration: 220,
+      duration: 200,
       onComplete: () => {
         rackToDeliver.destroy();
       },
@@ -415,7 +427,12 @@ export default class MainScene extends Phaser.Scene {
 
     // --- Pick tray ---
     if (Phaser.Input.Keyboard.JustDown(this.keys.E)) {
-      this.tryPickRack();
+      // If carrying, try deliver first
+      if (this.carriedRack) {
+        this.tryDeliverRack();
+      } else {
+        this.tryPickRack();
+      }
     }
 
     // --- Move trays with belt ---
