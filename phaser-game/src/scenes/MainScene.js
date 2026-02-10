@@ -261,7 +261,7 @@ export default class MainScene extends Phaser.Scene {
       "trayRack",
     );
 
-    tray.setScale(0.35);
+    tray.setScale(0.4);
     tray.setOrigin(0.5, 1);
 
     tray.body.setAllowGravity(false);
