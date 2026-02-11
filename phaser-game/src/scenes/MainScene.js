@@ -44,6 +44,11 @@ export default class MainScene extends Phaser.Scene {
     this.load.image("trayRack", "/assets/items/tray-bottles.png");
     this.load.image("factorySprite", "/assets/factory/full-factory.png");
     this.load.image("truckSprite", "/assets/truck/full-truck.png");
+    this.load.image("workerIdleGif", "/assets/worker/worker-idle.gif");
+    this.load.spritesheet("workerIdle", "/assets/worker/worker-idle.png", {
+      frameWidth: 56,     // change this
+      frameHeight: 56,    // change this
+    });
   }
 
   // ------------------------------------------------------------
@@ -187,12 +192,30 @@ export default class MainScene extends Phaser.Scene {
       if (i === totalWheels - 1) this.rightWheel = wheel;
     }
 
+    this.anims.create({
+      key: "worker-idle",
+      frames: this.anims.generateFrameNumbers("workerIdle", {
+        start: 0,
+        end: 3, // change this based on total frames
+      }),
+      frameRate: 10,
+      repeat: -1,
+    });
+
     // --- Worker on left side ---
-    this.worker = this.add.rectangle(230, this.beltY - 95, 40, 85, 0xffcc00);
-    this.physics.add.existing(this.worker);
+    this.worker = this.physics.add.sprite(230, this.beltY - 55, "workerIdle");
+
+    this.worker.setScale(3);
+    this.worker.setDepth(30);
 
     this.worker.body.setAllowGravity(false);
     this.worker.body.setCollideWorldBounds(true);
+
+    // physics body size (tune later)
+    this.worker.body.setSize(18, 28, true);
+
+    // play animation
+    this.worker.play("worker-idle");
 
     // --- Truck behind worker ---
     this.truckX = -40;
