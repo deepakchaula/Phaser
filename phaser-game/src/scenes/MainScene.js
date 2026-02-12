@@ -442,8 +442,10 @@ export default class MainScene extends Phaser.Scene {
 
     if (this.cursors.left.isDown || this.keys.A.isDown) {
       this.worker.body.setVelocityX(-speed);
+      this.worker.setFlipX(true);
     } else if (this.cursors.right.isDown || this.keys.D.isDown) {
       this.worker.body.setVelocityX(speed);
+      this.worker.setFlipX(false);
     } else {
       this.worker.body.setVelocityX(0);
     }
