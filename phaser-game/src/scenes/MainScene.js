@@ -46,8 +46,8 @@ export default class MainScene extends Phaser.Scene {
     this.load.image("truckSprite", "/assets/truck/full-truck.png");
     this.load.image("workerIdleGif", "/assets/worker/worker-idle.gif");
     this.load.spritesheet("workerIdle", "/assets/worker/worker-idle.png", {
-      frameWidth: 56,     // change this
-      frameHeight: 56,    // change this
+      frameWidth: 177,     // change this
+      frameHeight: 465,    // change this
     });
   }
 
@@ -196,16 +196,16 @@ export default class MainScene extends Phaser.Scene {
       key: "worker-idle",
       frames: this.anims.generateFrameNumbers("workerIdle", {
         start: 0,
-        end: 3, // change this based on total frames
+        end: 40, // change this based on total frames
       }),
-      frameRate: 10,
+      frameRate: 20,
       repeat: -1,
     });
 
     // --- Worker on left side ---
     this.worker = this.physics.add.sprite(230, this.beltY - 55, "workerIdle");
 
-    this.worker.setScale(3);
+    this.worker.setScale(0.3);
     this.worker.setDepth(30);
 
     this.worker.body.setAllowGravity(false);
